@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>{% block title %}뉴스 큐레이터 · 앤트위키{% endblock %}</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+<link rel="stylesheet" href="/static/style.css?v={{ asset_v() }}">
+<link rel="icon" href="https://www.ant.wiki/favicon/favicon.ico">
+</head>
+<body>
+<header class="aw-header">
+  <div class="aw-container aw-header-row">
+    <a class="aw-logo" href="/" aria-label="앤트위키 홈"><img src="/static/antwiki-logo.png" alt="앤트위키"></a>
+    <nav class="aw-nav" aria-label="둘러보기">
+      <a href="https://www.ant.wiki/themes" target="_blank" rel="noopener">산업·테마</a>
+      <a href="https://www.ant.wiki/investors" target="_blank" rel="noopener">투자기관</a>
+      <a href="https://www.ant.wiki/stocks/recommendations" target="_blank" rel="noopener">종목 탐색</a>
+      <a href="https://www.ant.wiki/chart" target="_blank" rel="noopener">차트</a>
+      <a href="https://www.ant.wiki/schedule" target="_blank" rel="noopener">캘린더</a>
+      <a href="https://www.ant.wiki/challenge" target="_blank" rel="noopener">챌린지</a>
+      <a href="/" class="{% if active == 'news' %}is-active{% endif %}">뉴스 큐레이터 <span class="aw-badge-new">LAB</span></a>
+    </nav>
+    <div class="aw-header-right">
+      <div class="aw-search" role="search"><span class="aw-search-icon">⌕</span><span>종목명, 종목코드, 테마 검색</span><kbd>Ctrl+K</kbd></div>
+      <button class="aw-login" type="button">로그인</button>
+    </div>
+  </div>
+</header>
+
+<main class="aw-main">
+  <div class="aw-container aw-columns">
+    <aside class="aw-rail aw-rail-left">
+      <section class="aw-card aw-rail-card">
+        <h3>뉴스 큐레이터란</h3>
+        <p>뉴스를 읽기 전에 앤트위키 종목 위키 2,651건과 산업 19개·테마 252개 구조를 먼저 적재하고, 그 틀 안에서 수혜주를 짚습니다.</p>
+        <ul class="aw-rail-list">
+          <li><span>수집 소스</span><b>텔레그램 47채널 · RSS 9</b></li>
+          <li><span>분석 LLM</span><b id="rail-provider">{{ stats.provider if stats else '—' }}</b></li>
+          <li><span>테마 지표 기준일</span><b>2026-10-01</b></li>
+        </ul>
+      </section>
+      <section class="aw-card aw-rail-card">
+        <h3>바로가기</h3>
+        <a class="aw-rail-link" href="https://www.ant.wiki/themes/all" target="_blank" rel="noopener">전체 테마 등락률 →</a>
+        <a class="aw-rail-link" href="https://www.ant.wiki/feed" target="_blank" rel="noopener">앤트위키 피드 →</a>
+        <a class="aw-rail-link" href="https://www.ant.wiki/wiki/recent" target="_blank" rel="noopener">최근 수정된 위키 →</a>
+      </section>
+    </aside>
+
+    <section class="aw-content">
+      {% block content %}{% endblock %}
+    </section>
+
+    <aside class="aw-rail aw-rail-right">
+      {% block rail_right %}
+      <section class="aw-card aw-rail-card">
+        <h3>게시 원칙</h3>
+        <ul class="aw-dots">
+          <li>수치는 앤트위키 API 값만, 기준일 표기</li>
+          <li>기사 문장 복사 금지, 재서술 + 출처 링크</li>
+          <li>매수 추천·목표가 금지</li>
+          <li>발행은 check → 사람 승인 → publish</li>
+        </ul>
+      </section>
+      {% endblock %}
+    </aside>
+  </div>
+</main>
+<footer class="aw-footer"><div class="aw-container">앤트위키 뉴스 큐레이터 (local lab) · 본 화면의 분석은 정보 제공 목적이며 투자 판단과 책임은 본인에게 있습니다.</div></footer>
+<script src="/static/app.js?v={{ asset_v() }}"></script>
+</body>
+</html>

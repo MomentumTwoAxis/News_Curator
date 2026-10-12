@@ -1,0 +1,108 @@
+# 뉴스 수급 소스 설정. RSS는 제목·요약·링크만 저장한다(본문 전문 저장 금지).
+# 기존 텔레그램 수혜주 봇(antwiki_beneficiary_bot/notifier/filters/news_config.yaml)의 소스를 참고해 경제·산업 전문지 위주로 구성.
+rss:
+  general:              # 종합 경제지 — 키워드/종목명/테마명 매칭된 기사만 채택
+    - {name: 한국경제, url: "https://www.hankyung.com/feed/all-news"}
+    - {name: 매일경제, url: "https://www.mk.co.kr/rss/30100041/"}
+    - {name: 서울경제, url: "https://www.sedaily.com/rss/economy"}
+    - {name: 연합뉴스경제, url: "https://www.yna.co.kr/rss/economy.xml"}
+    - {name: 머니투데이, url: "https://rss.mt.co.kr/mt_news.xml"}
+    # - {name: 이데일리, url: "https://rss.edaily.co.kr/edaily_news.xml"}   # 2026-10-12 연결 실패 → 올바른 RSS 주소 확인 후 복구
+  specialized:          # 산업 전문지 — 상장 종목명/테마명 포함 시 채택 (키워드 필터 생략)
+    - {name: 전자신문, url: "https://rss.etnews.com/Section901.xml"}
+    - {name: 디일렉, url: "https://www.thelec.kr/rss/allArticle.xml"}
+    - {name: 지디넷코리아, url: "https://feeds.feedburner.com/zdkorea"}
+    # - {name: 바이오스펙테이터, url: "https://www.biospectator.com/rss/allArticle.xml"}   # 2026-10-12 404 → 주소 확인 후 복구
+    - {name: 히트뉴스, url: "https://www.hitnews.co.kr/rss/allArticle.xml"}
+
+telegram:               # ★ 주요 소스 — 속보 채널 (Telethon 사용자 세션: TG_API_ID / TG_API_HASH / TG_SESSION_STRING)
+  lookback_minutes: 30
+  channels:             # 2026-10-12 세션 구독 채널 전체(단톡방·채팅방·토론방·공부방 제외). 운영자가 가감.
+    - moneythemestock         # 머니서퍼 — 가장빠른 주식뉴스
+    - hankyung_fin            # 한국경제
+    - darthacking             # AWAKE — 실시간 주식 공시 정리
+    - awake_realtimeCheck     # AWAKE — 52주 신고가 모니터링
+    - thebio111               # 더바이오 뉴스룸
+    - huhpharm                # 허혜민의 제약/바이오 소식통
+    - bdragon0808             # 한양증권 제약/바이오 오병용
+    - bioksm                  # 미래에셋 제약/바이오 김승민
+    - yakjangsu               # 미국 제약-바이오 주식/약장수
+    - growth_semi             # 그로쓰리서치 — 반도체 소부장
+    - growthbio               # 그로쓰리서치 — 바이오섹터
+    - growthresearch          # 그로쓰리서치 — 독립리서치
+    - siglab                  # 시그널랩 리서치
+    - sejongdata2013          # 세종기업데이터
+    - sypark_strategy         # 신영증권 박소연
+    - Yeouido_Lab             # Yeouido Lab — 여의도 톺아보기
+    - tastystock              # 여의도주식맛집
+    - shmstory                # 시황맨의 주식이야기
+    - tazastock               # 타점 읽어주는 여자
+    - getfeed                 # 석학들의 마켓 (인)사이트 PRO
+    - iposmallcap             # 아스달 (IPO&스몰캡)
+    - K_stock_guardian        # 국장지킴이
+    - fourgachi               # FOMO 4가투
+    - hogniel                 # 호그니엘
+    - habit4117               # 습관이 부자를 만든다
+    - easobi                  # 서화백의 그림놀이
+    - cahier_de_market        # 카이에 de market
+    - hermitcrab41_1          # 기술적 분석으로 보는 주식시장
+    - gaoshoukorea            # 재야의 고수들
+    - corevalue               # 가치투자클럽
+    - bornlupin               # 루팡
+    - one_going               # 요약하는 고잉
+    - guroguru                # 최선생네 반지하
+    - kimcharger              # 김찰저의 관심과 생각 저장소
+    - chanbobindustry         # 박강찬
+    - kim_rob                 # 그냥 김라브
+    - Brain_And_Body_Research # Brain and Body Research
+    - maddingStock            # 스탁이지 — AI 투자 어시스턴트
+    - aicorporateanalysisdeepdive  # AI 리서치 딥다이브
+    - ai_masters_community    # AI MASTERS
+    - insidertracking         # 미국 주식 인사이더
+    - FastStockNewsUSA        # 급등일보 미국주식
+    - kospigazua              # excelkospi 30분 시세알림 (시세 메시지는 exclude_patterns로 걸러짐)
+    - olix_official           # 올릭스 공식
+    - batiarchive             # 바티아카이브
+    - -1001208429502          # 주식 급등일보 — 급등테마·대장주
+    - -1001526709058          # AI Post — Artificial Intelligence
+  # 제외(단톡방·채팅·토론·스터디): BatiInvestChat, Kbiochat, aprinChat, z56321k12(에이피알 주주모임 토론방), stpharmChat,
+  #   vorovororing(보로노이 채팅방), -1002339309027(보로노이 Chat), -1002164265783(리가켐바이오 Chat), -1002296548192(에이비엘바이오 Chat),
+  #   -1002957160271(지투지바이오 Chat), EarlyStock1(공부방), desperatestudycafe(스터디카페), athletes_village(선수촌)
+  exclude_patterns:     # 텔레그램 전용 제외 (뉴스가 아닌 시세·광고·정기 리포트 헤더)
+    - '(상승률|하락률|거래대금|거래량)\s*TOP\s*\d+|시세알림|신고가 모니터링|VI 발동'
+    - 'IR 담당자|구독|유료|리딩|무료 체험|오픈채팅|초대 링크'
+    - '^\[?[가-힣A-Za-z ]*(증권|리서치센터|리서치)\]?$'                          # "[키움증권 리서치센터]" 같은 헤더만 있는 메시지
+    - '^[<\[]?\s*(글로벌 이슈|시장 컬러|데일리|모닝|마감)\s*[/|·>]'
+
+  # 채널 유형 메모: 통신사 속보(연합/뉴스1/뉴시스), 증권사 리서치 속보, 공시 알림, 산업 전문 채널. 채택 기준은 filters 공통.
+
+naver:                  # Naver 뉴스 검색 API (NAVER_CLIENT_ID / NAVER_CLIENT_SECRET 환경변수 필요). 없으면 건너뜀.
+  enabled: true
+  display: 20
+  queries:              # 기본 검색어. KB의 핫 테마명이 자동으로 추가됨 (--hot-themes N)
+    - 공급계약
+    - 수주
+    - 기술이전
+    - 임상 결과
+    - 정부 정책 산업
+    - FDA 승인
+
+filters:
+  lookback_hours: 6
+  exclude_title_keywords: [특징주, 마감시황, 장마감, 개장, 코스피 지수, 코스닥 지수, 증시 전망, 추천주, 오늘의 운세, 부고, 인사, 포토, 광고, 사설, 칼럼, 날씨]
+  exclude_url_patterns: ["/sports/", "/entertain", "/politics/", "/culture/", "/opinion/", "/photo/"]
+  # 0토큰 프리스크린 — 텔레그램 봇 프리스크린 '탈락 기준'을 제목 정규식으로 이식 (LLM 호출 전 차단)
+  exclude_title_patterns:
+    - '(의원|장관|총리|대통령|시장|지사|도지사|군수|구청장|당 대표|대표의원).*(강조|촉구|제언|제안|발의|주문|당부|요구|지적|우려|비판|발언|언급)'   # 정치인 발언·제안
+    - '(수상|표창|선정|인증|지정)\s*(받|했|돼|됐|$)|(이달의|우수|유망|최우수)\s*(벤처|기업|스타트업)'                          # 수상·선정
+    - '(상생|사회공헌|기부|후원|봉사|나눔|임직원 .*행사|기념식|준공식|개소식|출범식|성료)'                                           # CSR·행사
+    - '(캐시백|프로모션|이벤트 진행|사은품|경품|고객 모집|요금제 출시|할인 혜택)'                                                    # 금융상품·프로모션
+    - '(재건축|재개발|도시정비|리모델링 사업).*(수주|시공|시공사)'                                                                   # 주거 건설 시공권
+    - '(IND|INN|임상시험계획).*(제출|신청|접수|선정)|희귀의약품 지정 신청'                                                            # 바이오 행정절차
+    - '(사명 변경|CI 변경|사옥 이전|대표이사 선임|부사장 승진|신임 대표|이사회 구성)'                                                  # 일반 인사·명칭
+    - '(노조|노동부|수사 의뢰|송치|의혹|논란|고증|시청률|팬미팅|콘서트|런 \d{4}|마라톤)'                                              # 노무·사법·연예 (피해주 분석은 별도 경로)
+    - '^\[?(게시판|포토|인사|부고|알림|동정)\]?'
+  require_match: true     # 종목명 매칭 1개 이상, 또는 (테마명 매칭 + 제목에 경제 신호어) 이어야 채택
+  min_theme_alias_len: 3  # 2글자 테마 별칭('여행','조선')은 제목 신호어가 있어도 단독 채택 근거로 쓰지 않음
+  theme_only_requires_signal: true
+  signal_keywords: [수주, 공급, 계약, 투자, 인수, 합병, 지분, 승인, 허가, 임상, 출시, 양산, 증설, 수출, 규제, 정책, 관세, 가격, 인상, 인하, 실적, 영업이익, 매출, 적자, 흑자, 특허, 기술이전, 협력, 제휴, MOU, 개발, 상용화, 공장, 발주, 입찰, 선정, 국책, 보조금, 지원금, 금리, 환율, 유가]

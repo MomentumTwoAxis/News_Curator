@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="aw-card aw-analyze">
+  <div class="aw-analyze-head">
+    <h2>뉴스 링크 분석</h2>
+    <span class="aw-muted">기사 URL을 넣으면 본문을 읽고, 앤트위키 위키·테마 지식을 먼저 적재한 뒤 수혜주를 분석합니다.</span>
+  </div>
+  <form id="analyze-form" class="aw-analyze-form" autocomplete="off">
+    <input id="analyze-url" type="url" placeholder="https://… 기사 링크" required>
+    <input id="analyze-segment" type="text" placeholder="세그먼트 힌트 (선택, 예: HBM4)">
+    <button type="submit" class="aw-btn aw-btn-primary">분석</button>
+  </form>
+  <div id="analyze-status" class="aw-analyze-status" hidden></div>
+</section>
+
+<section class="aw-section-head">
+  <h2>뉴스 <span class="aw-count">{{ stats.total }}</span></h2>
+  <div class="aw-filters" role="tablist">
+    <button class="aw-chip is-active" data-filter="all">전체</button>
+    <button class="aw-chip aw-chip-hot" data-filter="hot">★ 핵심 <span class="aw-count-sm">{{ stats.highlight }}</span></button>
+    <button class="aw-chip" data-filter="analyzed">분석 완료 <span class="aw-count-sm">{{ stats.analyzed }}</span></button>
+    <button class="aw-chip" data-filter="pending">미분석</button>
+    <button class="aw-chip" data-filter="telegram">텔레그램</button>
+    <button class="aw-chip" data-filter="rss">RSS</button>
+  </div>
+</section>
+
+<ul class="aw-news-list" id="news-list">
+{% for it in items %}
+  <li class="aw-news-item {% if it.highlight %}is-hot{% endif %}" data-analyzed="{{ 'y' if it.analyzed else 'n' }}" data-hot="{{ 'y' if it.highlight else 'n' }}" data-source="{{ 'telegram' if it.source_type == 'telegram' else ('rss' if it.source_type and 'rss' in it.source_type else 'other') }}">
+    <a class="aw-news-link" href="/news/{{ it.id }}">
+      {% if it.image %}<img class="aw-thumb" src="{{ img_url(it.image) }}" alt="" loading="lazy" onerror="this.remove()">{% endif %}
+      <div class="aw-news-main">
+      <div class="aw-news-meta">
+        <span class="aw-source">{{ it.source }}</span><span class="aw-dot">·</span><span>{{ it.time }}</span>
+        {% if it.analyzed and not it.skip %}<span class="aw-pill aw-pill-done">분석 완료</span>
+        {% elif it.analyzed and it.skip %}<span class="aw-pill aw-pill-skip">영향 낮음</span>
+        {% elif jobs.get(it.id) and jobs[it.id].status == 'running' %}<span class="aw-pill aw-pill-run">분석 중…</span>
+        {% else %}<span class="aw-pill">미분석</span>{% endif %}
+        {% if it.news_type %}<span class="aw-pill aw-pill-type">{{ it.news_type }}</span>{% endif %}
+        {% if it.impact_score is not none %}<span class="aw-pill aw-pill-impact {% if (it.impact_score or 0) >= 90 %}is-high{% endif %}">영향력 {{ it.impact_score }}</span>{% endif %}
+        {% if it.highlight %}<span class="aw-pill aw-pill-hot">★ 핵심 뉴스</span>{% endif %}
+      </div>
+      <h3 class="aw-news-title">{{ it.title }}</h3>
+      {% if it.summary %}<p class="aw-news-summary">{{ it.summary }}</p>{% endif %}
+      <div class="aw-news-tags">
+        {% if it.beneficiaries %}
+          {% for b in it.beneficiaries %}<span class="aw-tag aw-tag-bene">{{ b.name }} <em>{{ '%.2f'|format(b.score or 0) }}</em></span>{% endfor %}
+        {% else %}
+          {% for s in it.stocks %}<span class="aw-tag">{{ s }}</span>{% endfor %}
+          {% for t in it.themes %}<span class="aw-tag aw-tag-theme">#{{ t }}</span>{% endfor %}
+        {% endif %}
+      </div>
+      </div>
+    </a>
+  </li>
+{% else %}
+  <li class="aw-empty">수집된 뉴스가 없습니다. <code>python -m pipeline.collect_telegram</code> 또는 <code>python -m pipeline.collect</code> 를 실행하거나 위에 링크를 넣어 분석해 보세요.</li>
+{% endfor %}
+</ul>
+{% endblock %}

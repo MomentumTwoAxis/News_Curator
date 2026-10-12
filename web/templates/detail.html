@@ -1,0 +1,217 @@
+{% extends "base.html" %}
+{% block title %}{{ news.title }} · 뉴스 큐레이터{% endblock %}
+{% block content %}
+{% macro impact_detail(imp, fd, rx) %}
+<div class="aw-impact-inline">
+  <div class="aw-impact-inline-head"><span>주가 영향력</span><b>{{ imp.score }}</b><span class="aw-muted">= 60% 펀더멘털 + 40% 실제 반응{% if imp.basis == 'fund_only' %} · 반응 미측정이라 펀더멘털만{% endif %}</span></div>
+  <div class="aw-impact-grid">
+    <div class="aw-impact-col">
+      <div class="aw-impact-head"><span>펀더멘털 영향</span><b>{{ '%.2f'|format(fd.score or 0) }}</b></div>
+      <div class="aw-bar-row"><span>핵심 사업부 관련성</span><div class="aw-scorebar"><i style="width: {{ ((fd.core_business or 0) * 100)|int }}%"></i></div><b>{{ '%.1f'|format(fd.core_business) if fd.core_business is not none else '—' }}</b></div>
+      <div class="aw-bar-row"><span>매출·이익 영향 크기</span><div class="aw-scorebar"><i style="width: {{ ((fd.pnl_effect or 0) * 100)|int }}%"></i></div><b>{{ '%.1f'|format(fd.pnl_effect) if fd.pnl_effect is not none else '—' }}</b></div>
+      <p class="aw-impact-note">{{ fd.rationale or '' }}</p>
+    </div>
+    <div class="aw-impact-col">
+      <div class="aw-impact-head"><span>실제 주가 반응 <small>{{ rx.stock_id or '' }}</small></span><b>{{ '%.2f'|format(rx.score) if rx.score is not none else '—' }}</b></div>
+      {% if rx.status == 'ok' %}
+      <div class="aw-react">
+        <div><span>구간</span><b>{{ rx.mode }} {{ rx.window }}</b></div>
+        <div><span>종가 변화</span><b class="{{ 'up' if (rx.signed_move_pct or 0) >= 0 else 'down' }}">{{ '{:,}'.format(rx.pre_close) }} → {{ '{:,}'.format(rx.post_close) }} ({{ '%+.2f'|format(rx.signed_move_pct or 0) }}%)</b></div>
+        <div><span>변동 절댓값(최대)</span><b>{{ '%.2f'|format(rx.abs_move_pct or 0) }}%</b></div>
+        <div><span>고저 범위</span><b>{{ '%.2f'|format(rx.range_pct or 0) }}%</b></div>
+        {% if rx.typical_3m_pct %}<div><span>당일 통상 3분 변동(중앙값)</span><b>{{ '%.2f'|format(rx.typical_3m_pct) }}% → ×{{ '%.1f'|format((rx.abs_move_pct or 0) / rx.typical_3m_pct) }}</b></div>{% endif %}
+      </div>
+      {% else %}
+      <p class="aw-impact-note">반응 미측정: {{ rx.status }}</p>
+      {% endif %}
+      <p class="aw-impact-note">변동 절댓값 0.3% → 0.2, 1% → 0.5, 2% → 0.8, 3% 이상 → 1.0. 데이터: 키움 1분봉.</p>
+    </div>
+  </div>
+</div>
+{% endmacro %}
+<a class="aw-back" href="/">← 뉴스 리스트</a>
+
+{# ───── 히어로 ───── #}
+<article class="aw-hero {% if not image %}aw-hero-noimg{% endif %}" {% if image %}style="--hero: url('{{ img_url(image) }}')"{% endif %}>
+  <div class="aw-hero-body">
+    <div class="aw-news-meta aw-hero-meta">
+      <span class="aw-source">{{ (news.source or '')|replace('tg:', 'TG · ') }}</span><span class="aw-dot">·</span><span>{{ fmt_time(news.published_at) }}</span>
+      {% if a and not a.skip %}<span class="aw-pill aw-pill-done">분석 완료</span>{% elif a and a.skip %}<span class="aw-pill aw-pill-skip">영향 낮음</span>{% else %}<span class="aw-pill">미분석</span>{% endif %}
+      {% if a and a.news_type %}<span class="aw-pill aw-pill-type">{{ a.news_type }}</span>{% endif %}
+    </div>
+    <h1 class="aw-hero-title">{{ news.title }}</h1>
+    {% if news.summary %}<p class="aw-hero-summary">{{ news.summary }}</p>{% endif %}
+    <div class="aw-article-actions">
+      {% if news.url %}<a class="aw-btn aw-btn-primary" href="{{ news.url }}" target="_blank" rel="noopener">원문으로 이동 ↗</a>{% endif %}
+      {% if a and a.post and a.post.body_text %}<button class="aw-btn aw-btn-ghost" id="copy-post" data-text="{{ a.post.body_text }}" title="피드 게시용 본문(초안)을 클립보드로">게시 본문 복사</button>{% endif %}
+      <button class="aw-btn aw-btn-ghost" id="reanalyze" data-id="{{ aid }}">{% if not a %}{% if job and job.status == 'running' %}분석 중…{% else %}지금 분석{% endif %}{% else %}다시 분석{% endif %}</button>
+      <span id="analyze-status" class="aw-analyze-status" {% if not (job and job.status == 'running') %}hidden{% else %}data-poll="{{ aid }}"{% endif %}>{% if job and job.status == 'running' %}LLM이 분석하고 있습니다. 완료되면 자동으로 새로고침됩니다.{% elif job and job.status == 'error' %}분석 실패: {{ job.error }}{% endif %}</span>
+    </div>
+  </div>
+</article>
+
+{% if a %}
+{# ───── 한눈에 보기 타일 ───── #}
+<section class="aw-tiles">
+  <div class="aw-tile">
+    <span class="aw-tile-label">확신도</span>
+    <div class="aw-ring" style="--p: {{ ((a.confidence or 0) * 100)|int }}"><b>{{ ((a.confidence or 0) * 100)|int }}<small>%</small></b></div>
+  </div>
+  <div class="aw-tile">
+    <span class="aw-tile-label">논조</span>
+    <b class="aw-tile-value aw-stance aw-stance-{{ (a.post.stance if a.post else 'neutral') or 'neutral' }}">{% set st = (a.post.stance if a.post else 'neutral') or 'neutral' %}{{ {'bullish':'호재','bearish':'악재','neutral':'중립','question':'불확실'}.get(st, st) }}</b>
+    <span class="aw-tile-sub">{{ st }}</span>
+  </div>
+  <div class="aw-tile">
+    <span class="aw-tile-label">수혜주</span>
+    <b class="aw-tile-value">{{ a.beneficiaries|length }}<small>종목</small></b>
+    <span class="aw-tile-sub">피해 {{ a.losers|length }} · 관심 {{ a.watchlist|length }}</span>
+  </div>
+  <div class="aw-tile">
+    <span class="aw-tile-label">근거</span>
+    <b class="aw-tile-value">{{ kb_count }}<small>위키</small></b>
+    <span class="aw-tile-sub">웹 교차확인 {{ web_count }}</span>
+  </div>
+  {% set imp = a.impact or {} %}{% set rx = imp.reaction or {} %}{% set fd = imp.fundamental or {} %}
+  <div class="aw-tile aw-tile-impact" title="주가 영향력 = 60% 펀더멘털(핵심사업·손익 영향) + 40% 실제 반응(뉴스 전후 1~3분 변동 절댓값)">
+    <span class="aw-tile-label">주가 영향력</span>
+    {% if imp.score is not none %}
+    <div class="aw-ring aw-ring-impact" style="--p: {{ imp.score }}"><b>{{ imp.score }}</b></div>
+    <span class="aw-tile-sub">펀더멘털 {{ '%.2f'|format(fd.score or 0) }}{% if fd.source == 'estimated' %}<em title="LLM 값 없음 — 뉴스 유형·확신도로 추정">(추정)</em>{% endif %}
+      {% if rx.status == 'ok' %}· {{ rx.mode }} <b class="{{ 'up' if (rx.signed_move_pct or 0) >= 0 else 'down' }}">{{ '%+.2f'|format(rx.signed_move_pct or 0) }}%</b> <span class="aw-muted">|{{ '%.2f'|format(rx.abs_move_pct or 0) }}%|</span>{% else %}· 반응 {{ rx.status or '미측정' }}{% endif %}</span>
+    {% else %}
+    <b class="aw-tile-value aw-tile-text">—</b><span class="aw-tile-sub">계산 전</span>
+    {% endif %}
+  </div>
+</section>
+
+{# ───── 관련 테마 ───── #}
+{% if themes %}
+<section class="aw-card">
+  <h2 class="aw-h2">관련 테마 <span class="aw-muted">앤트위키 산업·테마 지도 · RS 기준 {{ themes[0].as_of or '2026-10-01' }}</span></h2>
+  <div class="aw-theme-grid">
+    {% for t in themes %}
+    <a class="aw-theme-card" href="{{ t.url }}" target="_blank" rel="noopener" style="--c: {{ t.color }}">
+      <div class="aw-theme-head"><span class="aw-theme-swatch"></span><b>{{ t.name }}</b>{% if t.category %}<span class="aw-muted">{{ t.category }}</span>{% endif %}{% if t.kind == 'category' %}<span class="aw-pill">산업</span>{% endif %}</div>
+      <div class="aw-theme-stats">
+        <div><span>1D</span><b class="{{ 'up' if (t.r1 or 0) >= 0 else 'down' }}">{{ '%+.1f'|format(t.r1) if t.r1 is not none else '—' }}%</b></div>
+        <div><span>5D</span><b class="{{ 'up' if (t.r5 or 0) >= 0 else 'down' }}">{{ '%+.1f'|format(t.r5) if t.r5 is not none else '—' }}%</b></div>
+        <div><span>RS</span><b>{{ t.rs if t.rs is not none else '—' }}</b><i class="aw-rsbar"><em style="width: {{ (t.rs or 0)|int }}%"></em></i></div>
+        <div><span>종목</span><b>{{ t.n or '—' }}</b></div>
+      </div>
+      {% if t.leaders %}<div class="aw-theme-leaders">★ {{ t.leaders|join(' · ') }}</div>{% endif %}
+    </a>
+    {% endfor %}
+  </div>
+</section>
+{% endif %}
+
+{# ───── 수혜주: 0.9 이상 큰 카드(3단 논리) / 나머지 간단 행 ───── #}
+{% if a.beneficiaries %}
+<section class="aw-card">
+  <h2 class="aw-h2">핵심 수혜주 <span class="aw-muted">점수 0.9 이상 · 뉴스의 의미 → 회사 설명 → 영향</span></h2>
+  {% if big %}
+  <div class="aw-big-list">
+    {% for b in big %}
+    {% set q = quotes.get(b.stock_id) %}{% set sp = sparks.get(b.stock_id) %}{% set lg = b.logic_view %}
+    <div class="aw-big">
+      <div class="aw-big-head">
+        <img class="aw-logo" src="https://www.ant.wiki/stock-logo/{{ b.stock_id }}" alt="" loading="lazy" onerror="this.style.visibility='hidden'">
+        <div class="aw-stock-id">
+          <a class="aw-stock-name" href="{{ wiki_url(b.name, b.stock_id) }}" target="_blank" rel="noopener">{{ b.name }}</a>
+          <span class="aw-code">{{ b.stock_id }}{% if b.role %} · <span class="aw-role">{{ b.role }}</span>{% endif %} · 수혜 점수 <b>{{ '%.2f'|format(b.score or 0) }}</b></span>
+        </div>
+        {% set sd = sparks_1d.get(b.stock_id) %}
+        {% if (sp and sp.svg) or (sd and sd.svg) %}
+        <div class="aw-spark-toggle" data-auto="1">
+          {% if sp and sp.svg %}<div class="aw-spark-pane is-active" data-range="1M">{{ sp.svg|safe }}<span class="aw-spark-cap {{ 'up' if (sp.chg or 0) >= 0 else 'down' }}"><em>1M</em>{{ '%+.1f'|format(sp.chg) }}%</span></div>{% endif %}
+          {% if sd and sd.svg %}<div class="aw-spark-pane {% if not (sp and sp.svg) %}is-active{% endif %}" data-range="1D">{{ sd.svg|safe }}<span class="aw-spark-cap {{ 'up' if (sd.chg or 0) >= 0 else 'down' }}"><em>1D</em>{{ '%+.1f'|format(sd.chg) }}%{% if sd.news_time %}<small class="aw-spark-news-cap">▲ 뉴스 {{ sd.news_time }}{% if sd.news_edge == 'right' %} 마감 후{% elif sd.news_edge == 'left' %} 장전{% endif %}</small>{% endif %}</span></div>{% endif %}
+          <div class="aw-spark-dots">{% if sp and sp.svg %}<i data-range="1M" class="is-active"></i>{% endif %}{% if sd and sd.svg %}<i data-range="1D" class="{% if not (sp and sp.svg) %}is-active{% endif %}"></i>{% endif %}</div>
+        </div>
+        {% endif %}
+        {% if q %}<div class="aw-quote {{ 'up' if (q.change_percent or 0) >= 0 else 'down' }}"><b>{{ '{:,.0f}'.format(q.price) }}</b><span>{{ '%+.2f'|format(q.change_percent or 0) }}%</span></div>{% endif %}
+      </div>
+      <ol class="aw-logic">
+        <li><span class="aw-logic-k"><i>1</i>뉴스의 의미</span><p>{{ lg.news_meaning }}</p></li>
+        <li><span class="aw-logic-k"><i>2</i>{{ b.name }}은(는)</span><p>{{ lg.stock_profile }}</p></li>
+        <li><span class="aw-logic-k"><i>3</i>영향</span><p>{{ lg.effect }}</p></li>
+      </ol>
+      {% if lg.source == 'fallback' %}<p class="aw-impact-note">※ 3단 논리는 KB(영향 경로·위키 한줄설명·선정 이유)로 구성됨 — '다시 분석'하면 LLM이 직접 작성</p>{% endif %}
+      {% if imp.score is not none and (b.stock_id == rx.stock_id or (loop.first and rx.stock_id not in big|map(attribute='stock_id')|list)) %}{{ impact_detail(imp, fd, rx) }}{% endif %}
+      {% if b.kb_evidence or b.web_evidence %}
+      <details class="aw-ev">
+        <summary>근거 {{ (b.kb_evidence or [])|length + (b.web_evidence or [])|length }}건 · 위키 {{ (b.kb_evidence or [])|length }} / 웹 {{ (b.web_evidence or [])|length }}</summary>
+        {% for e in b.kb_evidence or [] %}<blockquote class="aw-quote-wiki"><span class="aw-ev-label">위키</span>{{ e }}</blockquote>{% endfor %}
+        {% for e in b.web_evidence or [] %}<blockquote class="aw-quote-web"><span class="aw-ev-label aw-ev-web">웹</span><a href="{{ e.url }}" target="_blank" rel="noopener">{{ e.note or e.url }}</a></blockquote>{% endfor %}
+      </details>
+      {% endif %}
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <p class="aw-muted">0.9 이상 종목 없음 — 직접 당사자나 위키로 공급·지분 관계가 확인된 종목이 없는 뉴스입니다.</p>
+  {% endif %}
+
+  {% if small %}
+  <h3 class="aw-h3">관련 수혜 후보 <span class="aw-muted">점수 0.9 미만</span></h3>
+  <ul class="aw-small-list">
+    {% for b in small %}{% set q = quotes.get(b.stock_id) %}
+    <li class="aw-small">
+      <img class="aw-logo aw-logo-sm" src="https://www.ant.wiki/stock-logo/{{ b.stock_id }}" alt="" loading="lazy" onerror="this.style.visibility='hidden'">
+      <div class="aw-small-main">
+        <div class="aw-small-top"><a class="aw-small-name" href="{{ wiki_url(b.name, b.stock_id) }}" target="_blank" rel="noopener">{{ b.name }}</a><span class="aw-code">{{ b.stock_id }}</span>{% if b.role %}<span class="aw-pill aw-pill-role">{{ b.role }}</span>{% endif %}
+          <span class="aw-scorebox aw-scorebox-sm"><div class="aw-scorebar"><i style="width: {{ ((b.score or 0) * 100)|int }}%"></i></div><b>{{ '%.2f'|format(b.score or 0) }}</b></span>
+          {% if q %}<span class="aw-quote aw-quote-inline {{ 'up' if (q.change_percent or 0) >= 0 else 'down' }}"><span>{{ '%+.2f'|format(q.change_percent or 0) }}%</span></span>{% endif %}</div>
+        <p class="aw-small-reason">{{ b.logic_view.effect or b.reason }}</p>
+      </div>
+    </li>
+    {% endfor %}
+  </ul>
+  {% endif %}
+</section>
+{% endif %}
+
+{# ───── 피해 · 관심 ───── #}
+{% if a.losers or a.watchlist %}
+<section class="aw-card aw-two">
+  {% if a.losers %}
+  <div><h2 class="aw-h2">피해·비용 부담</h2>
+    <ul class="aw-mini-list">{% for b in a.losers %}{% set q = quotes.get(b.stock_id) %}
+      <li><img class="aw-logo aw-logo-sm" src="https://www.ant.wiki/stock-logo/{{ b.stock_id }}" alt="" loading="lazy" onerror="this.style.visibility='hidden'"><div><a href="{{ wiki_url(b.name, b.stock_id) }}" target="_blank" rel="noopener"><b>{{ b.name }}</b></a>{% if b.role %} <span class="aw-role">{{ b.role }}</span>{% endif %}<p>{{ b.reason }}</p></div>{% if q %}<span class="aw-quote {{ 'up' if (q.change_percent or 0) >= 0 else 'down' }}"><span>{{ '%+.2f'|format(q.change_percent or 0) }}%</span></span>{% endif %}</li>{% endfor %}
+    </ul></div>
+  {% endif %}
+  {% if a.watchlist %}
+  <div><h2 class="aw-h2">관심 종목</h2>
+    <ul class="aw-mini-list">{% for w in a.watchlist %}{% set q = quotes.get(w.stock_id) %}
+      <li><img class="aw-logo aw-logo-sm" src="https://www.ant.wiki/stock-logo/{{ w.stock_id }}" alt="" loading="lazy" onerror="this.style.visibility='hidden'"><div><a href="{{ wiki_url(w.name, w.stock_id) }}" target="_blank" rel="noopener"><b>{{ w.name }}</b></a><p>{{ w.note }}</p></div>{% if q %}<span class="aw-quote {{ 'up' if (q.change_percent or 0) >= 0 else 'down' }}"><span>{{ '%+.2f'|format(q.change_percent or 0) }}%</span></span>{% endif %}</li>{% endfor %}
+    </ul></div>
+  {% endif %}
+</section>
+{% endif %}
+
+{# ───── 유의 ───── #}
+{% if a.caveats %}
+<section class="aw-callout"><b>유의</b><ul>{% for c in a.caveats %}<li>{{ c }}</li>{% endfor %}</ul></section>
+{% endif %}
+
+{% else %}
+<section class="aw-card">
+  <h2 class="aw-h2">아직 분석되지 않은 기사입니다</h2>
+  <p class="aw-muted">아래는 LLM 호출 전에 KB에서 바로 뽑은 컨텍스트(언급 종목·테마·위키 근거 후보)입니다. '지금 분석'을 누르면 이 컨텍스트로 수혜주 분석을 생성합니다.</p>
+  {% if pack %}<pre class="aw-pack">{{ pack }}</pre>{% endif %}
+</section>
+{% endif %}
+{% endblock %}
+{% block rail_right %}
+<section class="aw-card aw-rail-card">
+  <h3>읽는 법</h3>
+  <ul class="aw-dots">
+    <li><b>확신도</b>: 직접 언급+위키 근거 일치면 높음, 테마 경로 추론이면 중간</li>
+    <li><b>점수 막대</b>: 0~1, 대장/2등/소재·장비/간접 역할과 함께</li>
+    <li><b>미니차트</b>: 최근 1개월 종가, 빨강 상승·파랑 하락</li>
+    <li><b>위키/웹 라벨</b>: 근거 출처. 위키는 앤트위키 종목 문서 원문 발췌</li>
+    <li>테마 등락률은 당일, RS는 지표 생성일 기준</li>
+  </ul>
+</section>
+{{ super() }}
+{% endblock %}

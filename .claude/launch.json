@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "news-curator",
+      "runtimeExecutable": ".venv/bin/uvicorn",
+      "runtimeArgs": ["web.server:app", "--reload", "--port", "8765", "--host", "127.0.0.1"],
+      "port": 8765
+    }
+  ]
+}
